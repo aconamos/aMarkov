@@ -22,6 +22,7 @@ class Config(commands.cog):
             d_config['on'] = not d_config['on']
 
         await ctx.message.reply(f"Bot is {'disabled' if d_config['on'] == False else 'enabled'}!")
+        json.dump(f_config)
 
 
 def setup(bot):
