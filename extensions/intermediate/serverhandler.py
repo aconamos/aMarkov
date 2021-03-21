@@ -1,5 +1,5 @@
 import os
-from os import close, path
+
 
 # TODO Make path relative
 def check_server(id):
