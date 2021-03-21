@@ -1,7 +1,7 @@
 import json
 
 from discord.ext import commands
-from .intermediate.serverhandler import accumulate
+from .intermediate.serverhandler import accumulate, FileReturner
 
 class Config(commands.Cog):
     def __init__(self, bot):
@@ -13,16 +13,15 @@ class Config(commands.Cog):
         """
 
         """
-        f_config = accumulate(ctx.guild.id)[1]
-        d_config = json.load(f_config)
+        json_wrapper = accumulate(ctx.guild.id)[1]
+        s_config = json_wrapper.read()
+        d_config = json.loads(s_config)
         if mode == 'act':
-            """
-            Send Message
-            """
             d_config['on'] = not d_config['on']
 
         await ctx.message.reply(f"Bot is {'disabled' if d_config['on'] == False else 'enabled'}!")
-        json.dump(d_config, f_config)
+        s_config = json.dumps(d_config)
+        json_wrapper.write(s_config)
 
 
 def setup(bot):
