@@ -27,18 +27,21 @@ def accumulate(id):
             j.write("""{
     "channel": 123,
     "probability": 5,
-    "on": true
+    "on": false
 }""")
             j.close()
-    log = open(f'{path}\\log.txt', 'a')
+    log = FileReturner(id, True)
     json_wrapper = FileReturner(id)
     return (log, json_wrapper)
 
 
 class FileReturner:
-    def __init__(self, id):
+    def __init__(self, id, log=False):
         self.id = id
-        self.path = f'C:\\GitRepos\\aMarkov\\servers\\{id}\\config.json'
+        if not log:
+            self.path = f'C:\\GitRepos\\aMarkov\\servers\\{id}\\config.json'
+        else:
+            self.path = f'C:\\GitRepos\\aMarkov\\servers\\{id}\\log.txt'
         self.file = None 
 
 
