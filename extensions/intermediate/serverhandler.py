@@ -27,7 +27,8 @@ def accumulate(id):
             j.write("""{
     "channel": 123,
     "probability": 5,
-    "on": false
+    "on": false,
+    "mentions": true
 }""")
             j.close()
     log = FileReturner(id, True)

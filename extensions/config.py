@@ -28,16 +28,29 @@ class Config(commands.Cog):
         await ctx.message.reply(f'Bot has been set to channel id {channel}.')
 
 
-    @commands.command(help="Set probability for the bot to send a message after a server member sends a message. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['Setprobability', 'SetProbability', 'set_probability'])
-    async def setprobability(self, ctx, probability, mode='act'):
+    @commands.command(help="Set probability for the bot to send a message after a server member sends a message. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['Setprobability', 'SetProbability', 'set_probability', 'probability'])
+    async def setprobability(self, ctx, probability='act'):
         json_wrapper = accumulate(ctx.guild.id)[1]
         d_config = json.loads(json_wrapper.read())
-        if int(probability) < 1 or int(probability) > 100:
-            await ctx.message.reply('Error: You set a probability higher than 100 or lower than 1!')
+        if probability == 'act':
+            await ctx.message.reply(f"Probability is {d_config['probability']}")
         else:
-            d_config['probability'] = probability
+            if int(probability) < 1 or int(probability) > 100:
+                await ctx.message.reply('Error: You set a probability higher than 100 or lower than 1!')
+            else:
+                d_config['probability'] = probability
+                json_wrapper.write(json.dumps(d_config, indent=2))
+                await ctx.message.reply(f'Probability successfully set to {probability}.')
+
+
+    @commands.command(help="Toggles whether or not the bot will record mentions into the log. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['escape_mentions', 'Mentions'])
+    async def mentions(self, ctx, mode='act'):
+        json_wrapper = accumulate(ctx.guild.id)[1]
+        d_config = json.loads(json_wrapper.read())
+        if mode == 'act':
+            d_config['mentions'] = not d_config['mentions']
             json_wrapper.write(json.dumps(d_config, indent=2))
-            await ctx.message.reply(f'Probability successfully set to {probability}.')
+        await ctx.message.reply(f"Mentions are {'enabled' if d_config['mentions'] else 'disabled'}.")
 
 
 def setup(bot):
