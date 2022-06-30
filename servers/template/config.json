@@ -2,5 +2,6 @@
     "channel": 123,
     "probability": 5,
     "on": true,
-    "mentions": false
+    "mentions": false,
+    "equal_chance": false
 }

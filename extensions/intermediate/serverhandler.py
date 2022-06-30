@@ -28,16 +28,18 @@ def accumulate(id):
     "channel": 123,
     "probability": 5,
     "on": false,
-    "mentions": true
+    "mentions": true,
+    "equal_chance": true
 }""")
             j.close()
-    log = FileReturner(id, True)
-    json_wrapper = FileReturner(id)
+    log = FileInterface(id, True)
+    json_wrapper = FileInterface(id)
     return (log, json_wrapper)
 
 
-class FileReturner:
+class FileInterface:
     def __init__(self, id, log=False):
+        # oh god what did i do
         self.id = id
         if not log:
             self.path = f'C:\\GitRepos\\aMarkov\\servers\\{id}\\config.json'
