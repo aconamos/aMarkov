@@ -73,11 +73,15 @@ class Config(commands.Cog):
         await ctx.message.reply(f"Chance is {'equal' if d_config['equal_chance'] else 'inequal'}.")
         
     
-    @commands.command(help="Prints config settings.")
-    async def config(self, ctx):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        await ctx.message.reply(json.dumps(d_config))
+   
+    # @commands.command(help="just some bullshit")
+    # async def config(self, ctx, action, *args):
+    #     json_wrapper = accumulate(ctx.guild.id)[1]
+    #     d_config = json.loads(json_wrapper.read())
+    #     text = ctx.message.content
+    #     self.bot.logger.debug(text)
+    #     self.bot.logger.debug(action)
+    #     await ctx.send('{} arguments: {}'.format(len(args), ', '.join(args)))
 
 
 def setup(bot):

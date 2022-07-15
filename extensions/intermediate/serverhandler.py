@@ -1,3 +1,4 @@
+import json
 import os
 
 
@@ -35,6 +36,23 @@ def accumulate(id):
     log = FileInterface(id, True)
     json_wrapper = FileInterface(id)
     return (log, json_wrapper)
+
+
+def get_json_wrapper(id):
+    exists = check_server(id)
+    path = f'C:\\GitRepos\\aMarkov\\servers\\{id}'
+    if not exists['config'] or os.stat(f'{path}\\config.json').st_size <= 0:
+        with open(f'{path}\\config.json', 'w+') as j:
+            j.write("""{
+    "channel": 123,
+    "probability": 5,
+    "on": false,
+    "mentions": true,
+    "equal_chance": true
+}""")
+            j.close()
+    json_wrapper = FileInterface(id)
+    return json_wrapper
 
 
 class FileInterface:
