@@ -9,6 +9,9 @@ from serverhandler import get_json_wrapper
 
 from bot import aMarkovBot
 from markovify import get_text
+from loguru import logger
+
+from sql import schema
 
 
 class Listener(commands.Cog):
@@ -17,25 +20,40 @@ class Listener(commands.Cog):
 
     @discord.Cog.listener()
     async def on_message(self, message: Message):
-        # ctx = await self.bot.get_context(
-        # message
-        # )
-        self.bot.logger.debug(message)
-
         if not message.author.bot and message.guild is not None:
+            logger.trace(f"""
+valid message received
+content: {message.content}
+id: {message.id}
+author: {message.author.name} ({message.author.id})""")
+
+            con = self.bot.conn
+
+            res = con.execute(f"""
+            SELECT *
+            FROM servers
+            WHERE
+                id = {message.guild.id}
+                ;
+            """).fetchone()
+
+            if res is None:
+                logger.trace("server is not configured, not proceeding")
+                return
+
+            id, probability, enabled, mentioned, equal_chance = res
+
+            logger.debug(f"""server configuration: 
+{id}
+{probability}
+{enabled}
+{mentioned}
+{equal_chance}""")
+
+            schema.create_message(message, con)
+
+            return
             if message.channel.type == ChannelType.text:
-                # SQL Connection
-                cur = self.bot.cursor
-                con = self.bot.conn
-                cur.execute(
-                    f"CREATE TABLE if not exists S{message.guild.id} (ID INT PRIMARY KEY NOT NULL, CHANNEL_ID INT NOT NULL, CONTENT TEXT NOT NULL)"
-                )
-                con.commit()
-
-                # Get configuration
-                json_wrapper = get_json_wrapper(message.guild.id)
-                d_config = json.loads(json_wrapper.read())
-
                 if d_config["channel"] == message.channel.id:
                     # Insert text into database
                     text = message.content
