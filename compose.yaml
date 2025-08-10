@@ -1,0 +1,9 @@
+services:
+  amarkov:
+    build: .
+    image: amarkov:latest
+    restart: always
+    environment:
+      - TOKEN=${TOKEN}
+    volumes:
+      - ./data:/usr/src/amarkov/data
