@@ -1,6 +1,6 @@
 # Setup
 
-Create and populate a `.env` file with your discord bot token. Tutorials for discord bot setup are available online and the process won't be covered in this README.
+Create a `.env` file and populate the `TOKEN` field with your discord bot token. Instructions on how to create a discord bot can be found here: https://guide.pycord.dev/getting-started/creating-your-first-bot
 
 Run:
 1. `docker compose build`
