@@ -5,83 +5,166 @@
 
 import json
 
+from discord import ApplicationContext, InteractionContextType, SlashCommandGroup
+import discord
 from discord.ext import commands
-from .intermediate.serverhandler import accumulate, FileInterface
+from loguru import logger
+
+from bot import aMarkovBot
+from sql import schema
+
 
 class Config(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: aMarkovBot):
         self.bot = bot
 
+    admin_perms = discord.Permissions.none()
+    admin_perms.administrator = True
 
-    @commands.command(help="Turns the bot on and off. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['Toggle'])
-    @commands.has_guild_permissions(administrator=True)
-    async def toggle(self, ctx, mode='act'):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        if mode == 'act':
-            d_config['on'] = not d_config['on']
-            json_wrapper.write(json.dumps(d_config, indent=2))
-        await ctx.message.reply(f"Bot is {'disabled' if d_config['on'] == False else 'enabled'}.")
+    config = SlashCommandGroup("config", "Commands for configuration", guild_only=True)
 
+    config_query = config.create_subgroup("query", "Commands to read the configuration")
 
-    @commands.command(help="Sets the channel in which the bot will listen and speak to the one the command was sent in.", aliases=['Setchannel', 'SetChannel', 'set_channel'])
-    @commands.has_guild_permissions(administrator=True)
-    async def setchannel(self, ctx):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        channel = ctx.channel.id
-        d_config['channel'] = channel
-        json_wrapper.write(json.dumps(d_config, indent=2))
-        await ctx.message.reply(f'Bot has been set to channel id {channel}.')
+    config_toggle = config.create_subgroup(
+        "toggle",
+        "Commands to toggle on/off configuration parameters",
+        default_member_permissions=admin_perms,
+    )
 
+    config_set = config.create_subgroup(
+        "set",
+        "Commands to set configuration parameters",
+        default_member_permissions=admin_perms,
+    )
 
-    @commands.command(help="Set probability for the bot to send a message after a server member sends a message. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['Setprobability', 'SetProbability', 'set_probability', 'probability'])
-    @commands.has_guild_permissions(administrator=True)
-    async def setprobability(self, ctx, probability='act'):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        if probability == 'act':
-            await ctx.message.reply(f"Probability is {d_config['probability']}")
+    @config_query.before_invoke
+    @config_set.before_invoke
+    @config_toggle.before_invoke
+    async def check_server_in_db(self, ctx: discord.context.ApplicationContext):
+        if not schema.server_present(ctx.guild_id, self.bot.conn):
+            schema.init_server(ctx.guild_id, self.bot.conn)
+            await ctx.send("Default server config initialized", reference=ctx.message)
+
+    @config.command()
+    async def init(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        if not schema.server_present(ctx.guild_id, self.bot.conn):
+            schema.write_schema(self.bot.conn)
+            await ctx.interaction.respond(
+                "Bot configuration is now initialized!", ephemeral=True
+            )
         else:
-            if int(probability) < 1 or int(probability) > 100:
-                await ctx.message.reply('Error: You set a probability higher than 100 or lower than 1!')
-            else:
-                d_config['probability'] = probability
-                json_wrapper.write(json.dumps(d_config, indent=2))
-                await ctx.message.reply(f'Probability successfully set to {probability}.')
+            await ctx.interaction.respond(
+                "Bot has already been initialized!", ephemeral=True
+            )
 
+    @config.command(name="query_all")
+    async def _query_all(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        config = schema.fetch_config(ctx.guild_id, self.bot.conn)
 
-    @commands.command(help="Toggles whether or not the bot will record mentions into the log. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['escape_mentions', 'Mentions'])
-    @commands.has_guild_permissions(administrator=True)
-    async def mentions(self, ctx, mode='act'):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        if mode == 'act':
-            d_config['mentions'] = not d_config['mentions']
-            json_wrapper.write(json.dumps(d_config, indent=2))
-        await ctx.message.reply(f"Mentions are {'enabled' if d_config['mentions'] else 'disabled'}.")
+        if config is None:
+            await ctx.respond(
+                "Bot hasn't been initialized in this server yet! Use /config init to start it"
+            )
+        else:
+            id, probability, enabled, mentions, equal_chance = config
+            await ctx.respond(f"""## The bot is currently {"enabled" if enabled else "disabled"}.
+Probability: {probability}%
+Mentions are: {"escaped" if mentions else "left in"}
+### Markov Chain Parameters:
+equal_chance: {equal_chance}""")
 
-    
-    @commands.command(help="Toggles whether or not the bot will have an equal chance for each word. This essentially means that it will have an equal chance at any word said, compared to a higher chance if the word is said more. Specify anything other than 'act' or nothing and it will return the state of the bot without modifying anything.", aliases=['equal_chance', 'Equalchance'])
-    @commands.has_guild_permissions(administrator=True)
-    async def equalchance(self, ctx, mode='act'):
-        json_wrapper = accumulate(ctx.guild.id)[1]
-        d_config = json.loads(json_wrapper.read())
-        if mode == 'act':
-            d_config['equal_chance'] = not d_config['equal_chance']
-            json_wrapper.write(json.dumps(d_config, indent=2))
-        await ctx.message.reply(f"Chance is {'equal' if d_config['equal_chance'] else 'inequal'}.")
-        
-    
-   
-    # @commands.command(help="just some bullshit")
-    # async def config(self, ctx, action, *args):
-    #     json_wrapper = accumulate(ctx.guild.id)[1]
-    #     d_config = json.loads(json_wrapper.read())
-    #     text = ctx.message.content
-    #     self.bot.logger.debug(text)
-    #     self.bot.logger.debug(action)
-    #     await ctx.send('{} arguments: {}'.format(len(args), ', '.join(args)))
+    @config_query.command(name="probability")
+    async def _query_probability(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        prob = schema.query_probability(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Probability is currently {prob}%.", ephemeral=True
+        )
+
+    @config_set.command(name="probability")
+    async def _set_probability(
+        self,
+        ctx: discord.context.ApplicationContext,
+        probability: discord.Option(float),  # type: ignore
+    ):
+        if probability <= 0:
+            await ctx.interaction.respond(
+                "Probability must be above 0%!", ephemeral=True
+            )
+            return
+
+        if probability > 100:
+            await ctx.interaction.respond(
+                "Probability can't be above 100%!", ephemeral=True
+            )
+            return
+
+        schema.set_probability(ctx.guild_id, probability, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Probability set to {probability}%", ephemeral=True
+        )
+
+    @config_query.command(name="mentions")
+    async def _query_mentions(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        on = schema.query_mentions(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Mentions are currently {'enabled' if on else 'disabled'}.", ephemeral=True
+        )
+
+    @config_toggle.command(name="mentions")
+    async def _toggle_mentions(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        on = schema.toggle_mentions(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Bot is now {'enabled' if on else 'disabled'}.", ephemeral=True
+        )
+
+    @config_query.command(name="equal_chance")
+    async def _query_equal_chance(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        on = schema.query_equal_chance(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Chance is currently {'equal' if on else 'inequal'}.", ephemeral=True
+        )
+
+    @config_toggle.command(name="equal_chance")
+    async def _toggle_equal_chance(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        on = schema.toggle_equal_chance(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Chance is now {'equal' if on else 'inequal'}.", ephemeral=True
+        )
+
+    @config_query.command(name="enabled")
+    async def _toggle_query(self, ctx: discord.context.ApplicationContext):
+        on = schema.query_enabled(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Bot is currently {'enabled' if on else 'disabled'}.", ephemeral=True
+        )
+
+    @config_toggle.command(name="enabled")
+    async def _toggle_set(self, ctx: discord.context.ApplicationContext):
+        on = schema.toggle_enabled(ctx.guild_id, self.bot.conn)
+        await ctx.interaction.respond(
+            f"Bot is now {'enabled' if on else 'disabled'}.", ephemeral=True
+        )
 
 
 def setup(bot):

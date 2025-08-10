@@ -1,3 +1,8 @@
+"""
+This file contains virtually every action you could ever want to take on the database
+in the context of this bot.
+"""
+
 from sqlite3 import Connection
 from discord import Message
 from loguru import logger
@@ -34,6 +39,140 @@ def write_schema(database: Connection):
     database.commit()
 
 
+def fetch_config(
+    guild_id, database: Connection
+) -> None | tuple[int, float, bool, bool, bool]:
+    logger.trace(f"fetching server config for guild_id: {guild_id}")
+
+    res = database.execute(f"""
+    SELECT *
+    FROM servers
+    WHERE
+        id = {guild_id}
+        ;
+    """).fetchone()
+
+    if res is None:
+        logger.trace("server is not configured, not proceeding")
+        return
+
+    id, probability, enabled, mentioned, equal_chance = res
+
+    enabled = True if enabled == 1 else False
+    mentioned = True if enabled == 1 else False
+    equal_chance = True if enabled == 1 else False
+
+    return (id, probability, enabled, mentioned, equal_chance)
+
+
+def fetch_log(guild_id, database: Connection):
+    logger.trace(f"fetching logs for guild_id: {guild_id}")
+
+    res = database.execute(f"""
+    SELECT (content)
+    FROM messages
+    WHERE
+        guild_id = {guild_id}
+        ;
+    """).fetchall()
+
+    return [row[0] for row in res]
+
+
+def _query_bool(guild_id, field, database: Connection) -> bool:
+    logger.trace(f"querying {field} (bool) for guild_id: {guild_id}")
+
+    enabled = database.execute(f"""
+    SELECT ({field})
+    FROM servers
+    WHERE
+        id = {guild_id}
+        ;
+    """).fetchone()[0]
+
+    enabled = True if enabled == 1 else False
+
+    return enabled
+
+
+def _toggle_bool(guild_id, field, database: Connection) -> bool:
+    logger.trace(f"setting {field} (bool) for guild_id: {guild_id}")
+
+    enabled = query_enabled(guild_id, database)
+
+    database.execute(f"""
+    UPDATE servers
+    SET
+        {field} = {0 if enabled else 1}
+    WHERE
+        id = {guild_id}
+        ;
+    """)
+
+    database.commit()
+
+    return not enabled
+
+
+def query_enabled(guild_id, database: Connection) -> bool:
+    return _query_bool(guild_id, "enabled", database)
+
+
+def toggle_enabled(guild_id, database: Connection) -> bool:
+    return _toggle_bool(guild_id, "enabled", database)
+
+
+def query_mentions(guild_id, database: Connection) -> bool:
+    return _query_bool(guild_id, "mentions", database)
+
+
+def toggle_mentions(guild_id, database: Connection) -> bool:
+    return _toggle_bool(guild_id, "mentions", database)
+
+
+def query_equal_chance(guild_id, database: Connection) -> bool:
+    return _query_bool(guild_id, "equal_chance", database)
+
+
+def toggle_equal_chance(guild_id, database: Connection) -> bool:
+    return _toggle_bool(guild_id, "equal_chance", database)
+
+
+def query_probability(guild_id, database: Connection) -> float:
+    logger.trace(f"querying probability for guild_id: {guild_id}")
+
+    probability: float = database.execute(f"""
+    SELECT (probability)
+    FROM servers
+    WHERE
+        id = {guild_id}
+        ;
+    """).fetchone()[0]
+
+    return probability
+
+
+def set_probability(guild_id, probability, database: Connection):
+    logger.trace(f"setting probability to {probability} for guild_id: {guild_id}")
+
+    assert probability > 0
+    assert probability <= 100
+
+    database.execute(
+        f"""
+        UPDATE servers
+        SET
+            probability = ?
+        WHERE
+            id = {guild_id}
+            ;
+        """,
+        [probability],
+    )
+
+    database.commit()
+
+
 def create_message(message: Message, database: Connection):
     assert message.guild is not None
 
@@ -57,3 +196,38 @@ def create_message(message: Message, database: Connection):
     )
 
     database.commit()
+
+
+def server_present(guild_id, database: Connection):
+    return (
+        database.execute(f"""
+        SELECT *
+        FROM servers
+        WHERE
+            id = {guild_id}
+            ;
+    """).fetchone()
+        is not None
+    )
+
+
+def init_server(guild_id, database: Connection):
+    logger.trace(f"initializing guild_id: {guild_id}")
+
+    id, probability, enabled, mentions, equal_chance = database.execute(f"""
+        INSERT INTO servers
+            (id)
+        VALUES
+            ({guild_id})
+        RETURNING
+            *
+            ;
+        """).fetchone()
+
+    enabled = True if enabled == 1 else False
+    mentions = True if mentions == 1 else False
+    equal_chance = True if equal_chance == 1 else False
+
+    database.commit()
+
+    return (id, probability, enabled, mentions, equal_chance)

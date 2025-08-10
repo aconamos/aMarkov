@@ -1,11 +1,9 @@
-import json
 import random
 
-from discord import ChannelType, Message
+from discord import Message
 import discord
 from discord.ext import commands
 from discord.utils import escape_mentions
-from serverhandler import get_json_wrapper
 
 from bot import aMarkovBot
 from markovify import get_text
@@ -18,6 +16,20 @@ class Listener(commands.Cog):
     def __init__(self, bot):
         self.bot: aMarkovBot = bot
 
+    def __get_markov(self, guild_id, should_escape_mentions, equal_chance) -> str:
+        logger.trace("firing message!")
+        log = schema.fetch_log(guild_id, self.bot.conn)
+
+        if should_escape_mentions:
+            log = [escape_mentions(message) for message in log]
+
+        return get_text(
+            "\n".join(log),
+            random.randint(10, 50),  # TODO: Configure OR fine tune?
+            equal_chance,
+            100,
+        )
+
     @discord.Cog.listener()
     async def on_message(self, message: Message):
         if not message.author.bot and message.guild is not None:
@@ -29,59 +41,38 @@ author: {message.author.name} ({message.author.id})""")
 
             con = self.bot.conn
 
-            res = con.execute(f"""
-            SELECT *
-            FROM servers
-            WHERE
-                id = {message.guild.id}
-                ;
-            """).fetchone()
+            config = schema.fetch_config(message.guild.id, con)
 
-            if res is None:
-                logger.trace("server is not configured, not proceeding")
+            if config is None:
                 return
 
-            id, probability, enabled, mentioned, equal_chance = res
-
-            logger.debug(f"""server configuration: 
-{id}
-{probability}
-{enabled}
-{mentioned}
-{equal_chance}""")
+            (id, probability, enabled, should_escape_mentions, equal_chance) = config
 
             schema.create_message(message, con)
 
-            return
-            if message.channel.type == ChannelType.text:
-                if d_config["channel"] == message.channel.id:
-                    # Insert text into database
-                    text = message.content
-                    if not text == "":
-                        text = escape_mentions(text)
-                        cur.execute(
-                            f"INSERT INTO S{message.guild.id} (ID, CHANNEL_ID, CONTENT) VALUES ({message.id},{message.channel.id},?)",
-                            (text,),
+            if enabled:
+                rolled = random.uniform(0.0, 100.0)
+                if rolled < float(probability):
+                    await message.reply(
+                        content=self.__get_markov(
+                            id, should_escape_mentions, equal_chance
                         )
-                        con.commit()
+                    )
 
-                    # Reply
-                    if d_config["on"]:
-                        probability = d_config["probability"]
-                        rolled = random.uniform(0.0, 100.0)
-                        if rolled < float(probability):
-                            c_log = cur.execute(
-                                f"SELECT CONTENT FROM S{message.guild.id} WHERE CHANNEL_ID = {message.channel.id}"
-                            )
-                            t_log = [row[0] for row in c_log]
-                            await message.channel.send(
-                                get_text(
-                                    "\n".join(t_log),
-                                    random.randint(10, 50),
-                                    d_config["equal_chance"],
-                                    100,
-                                )
-                            )
+    @discord.command(description="Triggers a markov response.")
+    async def trigger(
+        self,
+        ctx: discord.context.ApplicationContext,
+    ):
+        res = schema.fetch_config(ctx.guild_id, self.bot.conn)
+
+        if res is None:
+            await ctx.respond("Bot is not initialized in this server", ephemeral=True)
+            return
+
+        id, probability, enabled, escape_mentions, equal_chance = res
+
+        await ctx.respond(self.__get_markov(id, escape_mentions, equal_chance))
 
 
 def setup(bot):

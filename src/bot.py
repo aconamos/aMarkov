@@ -15,7 +15,7 @@ class aMarkovBot(discord.Bot):
 
         initial_extensions = (
             "cogs.listener",
-            # "cogs.config",
+            "cogs.config",
             # 'cogs.help',
             # 'cogs.log_management'
         )
@@ -34,3 +34,7 @@ class aMarkovBot(discord.Bot):
                     type=discord.ActivityType.watching, name="you 👀"
                 )
             )
+
+        @self.command()
+        async def ping(ctx):
+            await ctx.reply("pong")
