@@ -39,9 +39,7 @@ def write_schema(database: Connection):
     database.commit()
 
 
-def fetch_config(
-    guild_id, database: Connection
-) -> None | tuple[int, float, bool, bool, bool]:
+def fetch_config(guild_id: int, database: Connection) -> None | tuple[int, float, bool, bool, bool]:
     logger.trace(f"fetching server config for guild_id: {guild_id}")
 
     res = database.execute(f"""
@@ -65,7 +63,7 @@ def fetch_config(
     return (id, probability, enabled, mentioned, equal_chance)
 
 
-def fetch_log(guild_id, database: Connection):
+def fetch_log(guild_id: int, database: Connection):
     logger.trace(f"fetching logs for guild_id: {guild_id}")
 
     res = database.execute(f"""
@@ -79,7 +77,7 @@ def fetch_log(guild_id, database: Connection):
     return [row[0] for row in res]
 
 
-def _query_bool(guild_id, field, database: Connection) -> bool:
+def _query_bool(guild_id: int, field: str, database: Connection) -> bool:
     logger.trace(f"querying {field} (bool) for guild_id: {guild_id}")
 
     enabled = database.execute(f"""
@@ -95,7 +93,7 @@ def _query_bool(guild_id, field, database: Connection) -> bool:
     return enabled
 
 
-def _toggle_bool(guild_id, field, database: Connection) -> bool:
+def _toggle_bool(guild_id: int, field: str, database: Connection) -> bool:
     logger.trace(f"setting {field} (bool) for guild_id: {guild_id}")
 
     enabled = query_enabled(guild_id, database)
@@ -114,31 +112,31 @@ def _toggle_bool(guild_id, field, database: Connection) -> bool:
     return not enabled
 
 
-def query_enabled(guild_id, database: Connection) -> bool:
+def query_enabled(guild_id: int, database: Connection) -> bool:
     return _query_bool(guild_id, "enabled", database)
 
 
-def toggle_enabled(guild_id, database: Connection) -> bool:
+def toggle_enabled(guild_id: int, database: Connection) -> bool:
     return _toggle_bool(guild_id, "enabled", database)
 
 
-def query_mentions(guild_id, database: Connection) -> bool:
+def query_mentions(guild_id: int, database: Connection) -> bool:
     return _query_bool(guild_id, "mentions", database)
 
 
-def toggle_mentions(guild_id, database: Connection) -> bool:
+def toggle_mentions(guild_id: int, database: Connection) -> bool:
     return _toggle_bool(guild_id, "mentions", database)
 
 
-def query_equal_chance(guild_id, database: Connection) -> bool:
+def query_equal_chance(guild_id: int, database: Connection) -> bool:
     return _query_bool(guild_id, "equal_chance", database)
 
 
-def toggle_equal_chance(guild_id, database: Connection) -> bool:
+def toggle_equal_chance(guild_id: int, database: Connection) -> bool:
     return _toggle_bool(guild_id, "equal_chance", database)
 
 
-def query_probability(guild_id, database: Connection) -> float:
+def query_probability(guild_id: int, database: Connection) -> float:
     logger.trace(f"querying probability for guild_id: {guild_id}")
 
     probability: float = database.execute(f"""
@@ -152,7 +150,7 @@ def query_probability(guild_id, database: Connection) -> float:
     return probability
 
 
-def set_probability(guild_id, probability, database: Connection):
+def set_probability(guild_id: int, probability: int, database: Connection):
     logger.trace(f"setting probability to {probability} for guild_id: {guild_id}")
 
     assert probability > 0
@@ -198,7 +196,7 @@ def create_message(message: Message, database: Connection):
     database.commit()
 
 
-def server_present(guild_id, database: Connection):
+def server_present(guild_id: int, database: Connection):
     return (
         database.execute(f"""
         SELECT *
@@ -211,7 +209,7 @@ def server_present(guild_id, database: Connection):
     )
 
 
-def init_server(guild_id, database: Connection):
+def init_server(guild_id: int, database: Connection):
     logger.trace(f"initializing guild_id: {guild_id}")
 
     id, probability, enabled, mentions, equal_chance = database.execute(f"""

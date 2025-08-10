@@ -1,8 +1,8 @@
 import random
 
-from discord import Message
-import discord
-from discord.ext import commands
+from discord import Message, command  # pyright: ignore[reportUnknownVariableType]
+from discord.commands.context import ApplicationContext
+from discord.ext.commands import Cog
 from discord.utils import escape_mentions
 
 from bot import aMarkovBot
@@ -12,11 +12,11 @@ from loguru import logger
 from sql import schema
 
 
-class Listener(commands.Cog):
-    def __init__(self, bot):
+class Listener(Cog):
+    def __init__(self, bot: aMarkovBot):
         self.bot: aMarkovBot = bot
 
-    def __get_markov(self, guild_id, should_escape_mentions, equal_chance) -> str:
+    def __get_markov(self, guild_id: int, should_escape_mentions: bool, equal_chance: bool) -> str:
         logger.trace("firing message!")
         log = schema.fetch_log(guild_id, self.bot.conn)
 
@@ -30,14 +30,14 @@ class Listener(commands.Cog):
             100,
         )
 
-    @discord.Cog.listener()
+    @Cog.listener()
     async def on_message(self, message: Message):
         if not message.author.bot and message.guild is not None:
-            logger.trace(f"""
-valid message received
-content: {message.content}
-id: {message.id}
-author: {message.author.name} ({message.author.id})""")
+            logger.trace(
+                f"""valid message received content: {message.content}
+                id: {message.id}
+                author: {message.author.name} ({message.author.id})"""
+            )
 
             con = self.bot.conn
 
@@ -53,16 +53,12 @@ author: {message.author.name} ({message.author.id})""")
             if enabled:
                 rolled = random.uniform(0.0, 100.0)
                 if rolled < float(probability):
-                    await message.reply(
-                        content=self.__get_markov(
-                            id, should_escape_mentions, equal_chance
-                        )
-                    )
+                    await message.reply(content=self.__get_markov(id, should_escape_mentions, equal_chance))
 
-    @discord.command(description="Triggers a markov response.")
+    @command(description="Triggers a markov response.")
     async def trigger(
         self,
-        ctx: discord.context.ApplicationContext,
+        ctx: ApplicationContext,
     ):
         res = schema.fetch_config(ctx.guild_id, self.bot.conn)
 
@@ -75,5 +71,5 @@ author: {message.author.name} ({message.author.id})""")
         await ctx.respond(self.__get_markov(id, escape_mentions, equal_chance))
 
 
-def setup(bot):
+def setup(bot: aMarkovBot):
     bot.add_cog(Listener(bot))

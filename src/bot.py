@@ -1,6 +1,7 @@
-import sqlite3
+from sqlite3 import Connection
 import discord
 
+from discord.commands.context import ApplicationContext
 from loguru import logger
 
 
@@ -9,9 +10,9 @@ bot_intents.message_content = True
 
 
 class aMarkovBot(discord.Bot):
-    def __init__(self, connection):
+    def __init__(self, connection: Connection):
         super().__init__(intents=bot_intents)
-        self.conn: sqlite3.Connection = connection
+        self.conn: Connection = connection
 
         initial_extensions = (
             "cogs.listener",
@@ -27,14 +28,10 @@ class aMarkovBot(discord.Bot):
                 logger.error(f"E (Loading extension {extension}): {e}")
 
         @self.listen()
-        async def on_ready():
+        async def on_ready():  # pyright: ignore[reportUnusedFunction]
             logger.success(f"{self.user} has connected to Discord!")
-            await self.change_presence(
-                activity=discord.Activity(
-                    type=discord.ActivityType.watching, name="you 👀"
-                )
-            )
+            await self.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="you 👀"))
 
         @self.command()
-        async def ping(ctx):
-            await ctx.reply("pong")
+        async def ping(ctx: ApplicationContext):  # pyright: ignore[reportUnusedFunction]
+            await ctx.respond("pong")
