@@ -16,7 +16,9 @@ def get_text(text: str, words_wanted: int, equal_chance: bool, endl_break_chance
     return final
 
 
-def __get_text(text: str, words_wanted: int, equal_chance: bool, endl_break_chance: int):
+def __get_text(
+    text: str, words_wanted: int, equal_chance: bool, endl_break_chance: int
+):
     corpus = text.split()
 
     def make_pairs(corpus: list[str]):
@@ -28,7 +30,7 @@ def __get_text(text: str, words_wanted: int, equal_chance: bool, endl_break_chan
     word_dict: dict[str, list[str]] = {}
 
     for word_1, word_2 in pairs:
-        assert word_1 and word_2 is not None
+        # assert word_1 and word_2 is not None
         if word_1 in word_dict.keys():
             if word_2 in word_dict[word_1] and equal_chance:
                 continue
