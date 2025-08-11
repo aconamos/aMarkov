@@ -4,6 +4,7 @@ from discord import Message, command  # pyright: ignore[reportUnknownVariableTyp
 from discord.commands.context import ApplicationContext
 from discord.ext.commands import Cog
 from discord.utils import escape_mentions
+import numpy
 
 from bot import aMarkovBot
 from markovify import get_text
@@ -16,7 +17,9 @@ class Listener(Cog):
     def __init__(self, bot: aMarkovBot):
         self.bot: aMarkovBot = bot
 
-    def __get_markov(self, guild_id: int, should_escape_mentions: bool, equal_chance: bool) -> str:
+    def __get_markov(
+        self, guild_id: int, should_escape_mentions: bool, equal_chance: bool
+    ) -> str:
         logger.trace("firing message!")
         log = schema.fetch_log(guild_id, self.bot.conn)
 
@@ -25,7 +28,7 @@ class Listener(Cog):
 
         return get_text(
             "\n".join(log),
-            random.randint(10, 50),  # TODO: Configure OR fine tune?
+            int(numpy.random.standard_normal() * 6) + 18,
             equal_chance,
             100,
         )
@@ -53,7 +56,11 @@ class Listener(Cog):
             if enabled:
                 rolled = random.uniform(0.0, 100.0)
                 if rolled < float(probability):
-                    await message.reply(content=self.__get_markov(id, should_escape_mentions, equal_chance))
+                    await message.reply(
+                        content=self.__get_markov(
+                            id, should_escape_mentions, equal_chance
+                        )
+                    )
 
     @command(description="Triggers a markov response.")
     async def trigger(
